@@ -1,0 +1,305 @@
+mansion_mystery/
+├── main.c
+├── mansion.c
+├── mansion.h
+├── pistas.c
+├── pistas.h
+├── hash.c
+├── hash.h
+└── Makefile
+#ifndef MANSION_H
+#define MANSION_H
+
+#define MAX_NOME 30
+
+typedef struct Comodo {
+    char nome[MAX_NOME];
+    struct Comodo *esquerda; // cômodo à esquerda
+    struct Comodo *direita;  // cômodo à direita
+} Comodo;
+
+Comodo* criarComodo(const char *nome);
+void inserirComodo(Comodo **raiz, const char *nome);
+void mostrarMansao(Comodo *raiz, int nivel);
+Comodo* buscarComodo(Comodo *raiz, const char *nome);
+void liberarMansao(Comodo *raiz);
+
+#endif
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "mansion.h"
+
+Comodo* criarComodo(const char *nome) {
+    Comodo *novo = malloc(sizeof(Comodo));
+    strcpy(novo->nome, nome);
+    novo->esquerda = novo->direita = NULL;
+    return novo;
+}
+
+void inserirComodo(Comodo **raiz, const char *nome) {
+    if (*raiz == NULL) {
+        *raiz = criarComodo(nome);
+        return;
+    }
+
+    if (strcmp(nome, (*raiz)->nome) < 0)
+        inserirComodo(&(*raiz)->esquerda, nome);
+    else
+        inserirComodo(&(*raiz)->direita, nome);
+}
+
+void mostrarMansao(Comodo *raiz, int nivel) {
+    if (raiz == NULL) return;
+    mostrarMansao(raiz->direita, nivel + 1);
+    for (int i = 0; i < nivel; i++) printf("    ");
+    printf("🏚️ %s\n", raiz->nome);
+    mostrarMansao(raiz->esquerda, nivel + 1);
+}
+
+Comodo* buscarComodo(Comodo *raiz, const char *nome) {
+    if (raiz == NULL) return NULL;
+    int cmp = strcmp(nome, raiz->nome);
+    if (cmp == 0) return raiz;
+    else if (cmp < 0) return buscarComodo(raiz->esquerda, nome);
+    else return buscarComodo(raiz->direita, nome);
+}
+
+void liberarMansao(Comodo *raiz) {
+    if (!raiz) return;
+    liberarMansao(raiz->esquerda);
+    liberarMansao(raiz->direita);
+    free(raiz);
+}
+#ifndef PISTAS_H
+#define PISTAS_H
+
+#define MAX_DESC 60
+
+typedef struct Pista {
+    char descricao[MAX_DESC];
+    struct Pista *esq;
+    struct Pista *dir;
+} Pista;
+
+Pista* criarPista(const char *desc);
+void inserirPista(Pista **raiz, const char *desc);
+void exibirPistas(Pista *raiz);
+Pista* buscarPista(Pista *raiz, const char *desc);
+void liberarPistas(Pista *raiz);
+
+#endif
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "pistas.h"
+
+Pista* criarPista(const char *desc) {
+    Pista *nova = malloc(sizeof(Pista));
+    strcpy(nova->descricao, desc);
+    nova->esq = nova->dir = NULL;
+    return nova;
+}
+
+void inserirPista(Pista **raiz, const char *desc) {
+    if (*raiz == NULL) {
+        *raiz = criarPista(desc);
+        return;
+    }
+    if (strcmp(desc, (*raiz)->descricao) < 0)
+        inserirPista(&(*raiz)->esq, desc);
+    else
+        inserirPista(&(*raiz)->dir, desc);
+}
+
+void exibirPistas(Pista *raiz) {
+    if (raiz == NULL) return;
+    exibirPistas(raiz->esq);
+    printf("🔎 %s\n", raiz->descricao);
+    exibirPistas(raiz->dir);
+}
+
+Pista* buscarPista(Pista *raiz, const char *desc) {
+    if (raiz == NULL) return NULL;
+    int cmp = strcmp(desc, raiz->descricao);
+    if (cmp == 0) return raiz;
+    else if (cmp < 0) return buscarPista(raiz->esq, desc);
+    else return buscarPista(raiz->dir, desc);
+}
+
+void liberarPistas(Pista *raiz) {
+    if (!raiz) return;
+    liberarPistas(raiz->esq);
+    liberarPistas(raiz->dir);
+    free(raiz);
+}
+#ifndef HASH_H
+#define HASH_H
+
+#define TAM_HASH 10
+#define MAX_NOME 30
+
+typedef struct NoHash {
+    char pista[MAX_NOME];
+    char suspeito[MAX_NOME];
+    struct NoHash *prox;
+} NoHash;
+
+typedef struct {
+    NoHash *tabela[TAM_HASH];
+} Hash;
+
+void inicializarHash(Hash *h);
+int hashFunc(const char *chave);
+void inserirHash(Hash *h, const char *pista, const char *suspeito);
+char* buscarSuspeito(Hash *h, const char *pista);
+void mostrarHash(Hash *h);
+void liberarHash(Hash *h);
+
+#endif
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "hash.h"
+
+int hashFunc(const char *chave) {
+    int soma = 0;
+    for (int i = 0; chave[i] != '\0'; i++)
+        soma += chave[i];
+    return soma % TAM_HASH;
+}
+
+void inicializarHash(Hash *h) {
+    for (int i = 0; i < TAM_HASH; i++)
+        h->tabela[i] = NULL;
+}
+
+void inserirHash(Hash *h, const char *pista, const char *suspeito) {
+    int pos = hashFunc(pista);
+    NoHash *novo = malloc(sizeof(NoHash));
+    strcpy(novo->pista, pista);
+    strcpy(novo->suspeito, suspeito);
+    novo->prox = h->tabela[pos];
+    h->tabela[pos] = novo;
+}
+
+char* buscarSuspeito(Hash *h, const char *pista) {
+    int pos = hashFunc(pista);
+    NoHash *aux = h->tabela[pos];
+    while (aux) {
+        if (strcmp(aux->pista, pista) == 0)
+            return aux->suspeito;
+        aux = aux->prox;
+    }
+    return NULL;
+}
+
+void mostrarHash(Hash *h) {
+    printf("\n🧩 Relações Pista → Suspeito\n");
+    for (int i = 0; i < TAM_HASH; i++) {
+        NoHash *aux = h->tabela[i];
+        while (aux) {
+            printf("🔹 '%s' → %s\n", aux->pista, aux->suspeito);
+            aux = aux->prox;
+        }
+    }
+}
+
+void liberarHash(Hash *h) {
+    for (int i = 0; i < TAM_HASH; i++) {
+        NoHash *aux = h->tabela[i];
+        while (aux) {
+            NoHash *tmp = aux;
+            aux = aux->prox;
+            free(tmp);
+        }
+    }
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include "mansion.h"
+#include "pistas.h"
+#include "hash.h"
+
+int main() {
+    Comodo *mansao = NULL;
+    Pista *arvorePistas = NULL;
+    Hash relacoes;
+    inicializarHash(&relacoes);
+
+    // === FASE 1: MAPA DA MANSÃO ===
+    inserirComodo(&mansao, "Biblioteca");
+    inserirComodo(&mansao, "Cozinha");
+    inserirComodo(&mansao, "Sala de Estar");
+    inserirComodo(&mansao, "Porão");
+    inserirComodo(&mansao, "Quarto");
+
+    printf("🏰 Mapa da Mansão:\n");
+    mostrarMansao(mansao, 0);
+
+    // === FASE 2: PISTAS ===
+    inserirPista(&arvorePistas, "Pegadas de lama");
+    inserirPista(&arvorePistas, "Copo quebrado");
+    inserirPista(&arvorePistas, "Carta rasgada");
+    inserirPista(&arvorePistas, "Mancha de vinho");
+
+    printf("\n🔍 Pistas encontradas:\n");
+    exibirPistas(arvorePistas);
+
+    // === FASE 3: HASH - RELACIONAR PISTAS E SUSPEITOS ===
+    inserirHash(&relacoes, "Pegadas de lama", "Jardineiro");
+    inserirHash(&relacoes, "Copo quebrado", "Mordomo");
+    inserirHash(&relacoes, "Carta rasgada", "Senhora da casa");
+    inserirHash(&relacoes, "Mancha de vinho", "Chef");
+
+    mostrarHash(&relacoes);
+
+    // === TESTE FINAL ===
+    char busca[] = "Carta rasgada";
+    char *suspeito = buscarSuspeito(&relacoes, busca);
+    printf("\n🕵️ Ao analisar '%s', o detetive suspeita de: %s\n",
+           busca, suspeito ? suspeito : "Ninguém");
+
+    // Liberação de memória
+    liberarMansao(mansao);
+    liberarPistas(arvorePistas);
+    liberarHash(&relacoes);
+
+    return 0;
+}
+CC = gcc
+CFLAGS = -Wall -Wextra -std=c11
+OBJS = main.o mansion.o pistas.o hash.o
+
+mystery: $(OBJS)
+	$(CC) $(CFLAGS) -o mystery $(OBJS)
+
+main.o: main.c mansion.h pistas.h hash.h
+mansion.o: mansion.c mansion.h
+pistas.o: pistas.c pistas.h
+hash.o: hash.c hash.h
+
+clean:
+	rm -f *.o mystery
+make
+./mystery
+🏰 Mapa da Mansão:
+        🏚️ Quarto
+    🏚️ Sala de Estar
+🏚️ Porão
+        🏚️ Cozinha
+    🏚️ Biblioteca
+
+🔍 Pistas encontradas:
+🔎 Carta rasgada
+🔎 Copo quebrado
+🔎 Mancha de vinho
+🔎 Pegadas de lama
+
+🧩 Relações Pista → Suspeito
+🔹 'Pegadas de lama' → Jardineiro
+🔹 'Copo quebrado' → Mordomo
+🔹 'Carta rasgada' → Senhora da casa
+🔹 'Mancha de vinho' → Chef
+
+🕵️ Ao analisar 'Carta rasgada', o detetive suspeita de: Senhora da casa

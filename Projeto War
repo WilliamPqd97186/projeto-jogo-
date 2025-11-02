@@ -1,0 +1,175 @@
+war/
+├── main.c
+├── territorio.h
+├── territorio.c
+├── jogo.h
+├── jogo.c
+└── utils.h
+#ifndef TERRITORIO_H
+#define TERRITORIO_H
+
+#define MAX_NOME 30
+
+typedef struct Territorio {
+    char nome[MAX_NOME];
+    int exercitos;
+    int dono; // id do jogador
+    struct Territorio **vizinhos;
+    int numVizinhos;
+} Territorio;
+
+// Funções de gerenciamento
+Territorio* criarTerritorio(const char *nome, int dono, int exercitos);
+void adicionarVizinho(Territorio *origem, Territorio *vizinho);
+void liberarTerritorio(Territorio *t);
+
+#endif
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "territorio.h"
+
+Territorio* criarTerritorio(const char *nome, int dono, int exercitos) {
+    Territorio *t = (Territorio*) malloc(sizeof(Territorio));
+    strcpy(t->nome, nome);
+    t->dono = dono;
+    t->exercitos = exercitos;
+    t->numVizinhos = 0;
+    t->vizinhos = NULL;
+    return t;
+}
+
+void adicionarVizinho(Territorio *origem, Territorio *vizinho) {
+    origem->vizinhos = realloc(origem->vizinhos, (origem->numVizinhos + 1) * sizeof(Territorio*));
+    origem->vizinhos[origem->numVizinhos++] = vizinho;
+}
+
+void liberarTerritorio(Territorio *t) {
+    if (t->vizinhos) free(t->vizinhos);
+    free(t);
+}
+#ifndef JOGO_H
+#define JOGO_H
+
+#include "territorio.h"
+
+typedef struct Jogador {
+    int id;
+    char nome[MAX_NOME];
+} Jogador;
+
+// Funções principais do jogo
+void atacar(Territorio *origem, Territorio *alvo);
+void mostrarStatus(Territorio **mapa, int numTerritorios);
+int verificarVitoria(Territorio **mapa, int numTerritorios, int idJogador);
+
+#endif
+#include <stdio.h>
+#include <stdlib.h>
+#include "jogo.h"
+
+// Simula uma rolagem de dados (função que pode ser trocada por ponteiro)
+int rolarDado() {
+    return rand() % 6 + 1;
+}
+
+// Função de ataque
+void atacar(Territorio *origem, Territorio *alvo) {
+    if (origem->dono == alvo->dono) {
+        printf("❌ Você não pode atacar seu próprio território!\n");
+        return;
+    }
+
+    printf("\n⚔️ Ataque de %s (%d exércitos) -> %s (%d exércitos)\n",
+           origem->nome, origem->exercitos, alvo->nome, alvo->exercitos);
+
+    int dadoAtaque = rolarDado();
+    int dadoDefesa = rolarDado();
+
+    printf("🎲 Ataque: %d  |  Defesa: %d\n", dadoAtaque, dadoDefesa);
+
+    if (dadoAtaque > dadoDefesa) {
+        alvo->exercitos--;
+        printf("🔥 O ataque foi bem-sucedido! %s perdeu 1 exército.\n", alvo->nome);
+        if (alvo->exercitos <= 0) {
+            alvo->dono = origem->dono;
+            alvo->exercitos = 1;
+            origem->exercitos--;
+            printf("🏴 %s foi conquistado!\n", alvo->nome);
+        }
+    } else {
+        origem->exercitos--;
+        printf("🛡️ A defesa resistiu! %s perdeu 1 exército.\n", origem->nome);
+    }
+}
+
+// Exibe o status atual dos territórios
+void mostrarStatus(Territorio **mapa, int numTerritorios) {
+    printf("\n=== 🌍 MAPA ATUAL ===\n");
+    for (int i = 0; i < numTerritorios; i++) {
+        printf("%s - Jogador %d - %d exércitos\n",
+               mapa[i]->nome, mapa[i]->dono, mapa[i]->exercitos);
+    }
+}
+
+// Verifica condição de vitória
+int verificarVitoria(Territorio **mapa, int numTerritorios, int idJogador) {
+    for (int i = 0; i < numTerritorios; i++) {
+        if (mapa[i]->dono != idJogador)
+            return 0; // Ainda não venceu
+    }
+    return 1; // Todos os territórios conquistados
+}
+typedef int (*MissaoFunc)(Territorio **, int, int);
+
+// Exemplo de missão: conquistar 3 territórios
+int missaoConquistar3(Territorio **mapa, int numTerritorios, int id) {
+    int count = 0;
+    for (int i = 0; i < numTerritorios; i++) {
+        if (mapa[i]->dono == id)
+            count++;
+    }
+    return count >= 3;
+}
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include "territorio.h"
+#include "jogo.h"
+
+int main() {
+    srand(time(NULL));
+
+    // Criação de territórios
+    Territorio *t1 = criarTerritorio("Brasil", 1, 5);
+    Territorio *t2 = criarTerritorio("Argentina", 2, 4);
+    Territorio *t3 = criarTerritorio("Chile", 2, 3);
+
+    adicionarVizinho(t1, t2);
+    adicionarVizinho(t2, t3);
+    adicionarVizinho(t3, t1);
+
+    Territorio *mapa[] = {t1, t2, t3};
+    int numTerritorios = 3;
+
+    int opcao;
+    do {
+        mostrarStatus(mapa, numTerritorios);
+        printf("\n1. Atacar\n2. Verificar vitória\n0. Sair\n> ");
+        scanf("%d", &opcao);
+
+        if (opcao == 1) atacar(t1, t2);
+        else if (opcao == 2) {
+            if (verificarVitoria(mapa, numTerritorios, 1))
+                printf("🏆 Jogador 1 conquistou o mundo!\n");
+            else
+                printf("⚙️ Ainda há territórios inimigos.\n");
+        }
+
+    } while (opcao != 0);
+
+    for (int i = 0; i < numTerritorios; i++)
+        liberarTerritorio(mapa[i]);
+
+    return 0;
+}

@@ -1,0 +1,229 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define MAX_PECA 20
+#define MAX_FILA 10
+#define MAX_PILHA 5
+
+// -----------------------------
+// Estruturas
+// -----------------------------
+typedef struct {
+    char nome[MAX_PECA];
+} Peca;
+
+// Fila (FIFO)
+typedef struct {
+    Peca itens[MAX_FILA];
+    int frente, tras, tamanho;
+} Fila;
+
+// Pilha (LIFO)
+typedef struct {
+    Peca itens[MAX_PILHA];
+    int topo;
+} Pilha;
+
+// -----------------------------
+// Funções de Fila
+// -----------------------------
+void inicializarFila(Fila *f) {
+    f->frente = 0;
+    f->tras = -1;
+    f->tamanho = 0;
+}
+
+int filaVazia(Fila *f) {
+    return f->tamanho == 0;
+}
+
+int filaCheia(Fila *f) {
+    return f->tamanho == MAX_FILA;
+}
+
+void enfileirar(Fila *f, Peca p) {
+    if (filaCheia(f)) {
+        printf("⚠️ Fila de peças futuras cheia!\n");
+        return;
+    }
+    f->tras = (f->tras + 1) % MAX_FILA;
+    f->itens[f->tras] = p;
+    f->tamanho++;
+}
+
+Peca desenfileirar(Fila *f) {
+    Peca p = {"--"};
+    if (filaVazia(f)) {
+        printf("❌ Fila vazia!\n");
+        return p;
+    }
+    p = f->itens[f->frente];
+    f->frente = (f->frente + 1) % MAX_FILA;
+    f->tamanho--;
+    return p;
+}
+
+void mostrarFila(Fila *f) {
+    printf("\n🎮 Peças Futuras (Fila):\n");
+    if (filaVazia(f)) {
+        printf("(vazia)\n");
+        return;
+    }
+    int i = f->frente;
+    for (int c = 0; c < f->tamanho; c++) {
+        printf("[%s] ", f->itens[i].nome);
+        i = (i + 1) % MAX_FILA;
+    }
+    printf("\n");
+}
+
+// -----------------------------
+// Funções de Pilha
+// -----------------------------
+void inicializarPilha(Pilha *p) {
+    p->topo = -1;
+}
+
+int pilhaVazia(Pilha *p) {
+    return p->topo == -1;
+}
+
+int pilhaCheia(Pilha *p) {
+    return p->topo == MAX_PILHA - 1;
+}
+
+void empilhar(Pilha *p, Peca nova) {
+    if (pilhaCheia(p)) {
+        printf("⚠️ Pilha de reservas cheia!\n");
+        return;
+    }
+    p->itens[++p->topo] = nova;
+}
+
+Peca desempilhar(Pilha *p) {
+    Peca peca = {"--"};
+    if (pilhaVazia(p)) {
+        printf("❌ Nenhuma peça reservada!\n");
+        return peca;
+    }
+    return p->itens[p->topo--];
+}
+
+void mostrarPilha(Pilha *p) {
+    printf("\n📦 Pilha de Reservas:\n");
+    if (pilhaVazia(p)) {
+        printf("(vazia)\n");
+        return;
+    }
+    for (int i = p->topo; i >= 0; i--) {
+        printf("[%s]\n", p->itens[i].nome);
+    }
+}
+
+// -----------------------------
+// Funções do Jogo
+// -----------------------------
+void jogarPeca(Fila *f) {
+    if (filaVazia(f)) {
+        printf("❌ Nenhuma peça para jogar!\n");
+        return;
+    }
+    Peca atual = desenfileirar(f);
+    printf("🎯 Jogando peça: %s\n", atual.nome);
+}
+
+void reservarPeca(Fila *f, Pilha *p) {
+    if (filaVazia(f)) {
+        printf("❌ Nenhuma peça para reservar!\n");
+        return;
+    }
+    if (pilhaCheia(p)) {
+        printf("⚠️ Pilha cheia! Libere espaço antes de reservar.\n");
+        return;
+    }
+    Peca atual = desenfileirar(f);
+    empilhar(p, atual);
+    printf("💾 Peça '%s' foi reservada!\n", atual.nome);
+}
+
+void recuperarReserva(Fila *f, Pilha *p) {
+    if (pilhaVazia(p)) {
+        printf("❌ Nenhuma peça reservada para recuperar!\n");
+        return;
+    }
+    Peca recuperada = desempilhar(p);
+    printf("🔄 Recuperando peça reservada: %s\n", recuperada.nome);
+    enfileirar(f, recuperada);
+}
+
+// -----------------------------
+// Função principal
+// -----------------------------
+int main() {
+    Fila fila;
+    Pilha pilha;
+    inicializarFila(&fila);
+    inicializarPilha(&pilha);
+
+    // Peças iniciais (simuladas)
+    Peca pecas[] = {{"Quadrado"}, {"Linha"}, {"T"}, {"L"}, {"Z"}};
+    for (int i = 0; i < 5; i++)
+        enfileirar(&fila, pecas[i]);
+
+    int opc;
+    do {
+        printf("\n=== 🧱 TETRIS STACK ===\n");
+        printf("1. Mostrar estruturas\n");
+        printf("2. Jogar próxima peça\n");
+        printf("3. Reservar peça atual\n");
+        printf("4. Recuperar peça reservada\n");
+        printf("0. Sair\n> ");
+        scanf("%d", &opc);
+
+        switch (opc) {
+            case 1:
+                mostrarFila(&fila);
+                mostrarPilha(&pilha);
+                break;
+            case 2:
+                jogarPeca(&fila);
+                break;
+            case 3:
+                reservarPeca(&fila, &pilha);
+                break;
+            case 4:
+                recuperarReserva(&fila, &pilha);
+                break;
+            case 0:
+                printf("👋 Encerrando o jogo...\n");
+                break;
+            default:
+                printf("Opção inválida!\n");
+        }
+    } while (opc != 0);
+
+    return 0;
+}
+=== 🧱 TETRIS STACK ===
+1. Mostrar estruturas
+2. Jogar próxima peça
+3. Reservar peça atual
+4. Recuperar peça reservada
+0. Sair
+> 1
+
+🎮 Peças Futuras (Fila):
+[Quadrado] [Linha] [T] [L] [Z]
+
+📦 Pilha de Reservas:
+(vazia)
+
+> 3
+💾 Peça 'Quadrado' foi reservada!
+
+> 4
+🔄 Recuperando peça reservada: Quadrado
+
+> 2
+🎯 Jogando peça: Linha
